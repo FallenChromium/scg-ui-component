@@ -1,0 +1,32 @@
+{
+  "name": "scg-ui-component",
+  "version": "0.0.1",
+  "description": "A UI component for ostis-systems that allows you to visualize and edit knowledge using SCg-code",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rm -rf ./dist && tsc",
+    "dev": "tsc -w"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ostis-ai/scg-ui-component.git"
+  },
+  "keywords": [
+    "ostis",
+    "scg"
+  ],
+  "author": "Pavel Nasevich",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ostis-ai/scg-ui-component/issues"
+  },
+  "homepage": "https://github.com/ostis-ai/scg-ui-component#readme"
+}
