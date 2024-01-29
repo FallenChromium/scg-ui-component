@@ -1,33 +1,33 @@
 import { Vector2, Vector3 } from "three";
-import { ScType, sc_type_node, sc_type_node_struct } from "ts-sc-client";
+import { sc_type_node, sc_type_node_struct } from "ts-sc-client";
 import { Algorithms, SCgMath } from "./math";
 import { sc_type_dedge_common, sc_type_edge_access } from "ts-sc-client";
-namespace ModelObjects {
-    const SCgObjectState = {
-        Normal: 0,
-        MergedWithMemory: 1,
-        NewInMemory: 2,
-        FromMemory: 3,
-        RemovedFromMemory: 4,
+import { SCgScene } from "./scene";
+    const enum SCgObjectState {
+        Normal = 0,
+        MergedWithMemory = 1,
+        NewInMemory = 2,
+        FromMemory = 3,
+        RemovedFromMemory = 4,
     };
 
-    const SCgObjectLevel = {
-        First: 0,
-        Second: 1,
-        Third: 2,
-        Fourth: 3,
-        Fifth: 4,
-        Sixth: 5,
-        Seventh: 6,
-        Count: 7,
+    const enum SCgObjectLevel {
+        First = 0,
+        Second = 1,
+        Third = 2,
+        Fourth = 3,
+        Fifth = 4,
+        Sixth = 5,
+        Seventh = 6,
+        Count = 7,
     };
 
     type ModelObjectOptions = {
         position: Vector3,
         scale: Vector2,
         sc_type: number,
-        sc_addr: number,
-        text: string,
+        sc_addr?: number,
+        text?: string
     }
 
     let ObjectId = 0;
@@ -62,35 +62,39 @@ namespace ModelObjects {
         scene: SCgScene | null = null;
         bus: ModelBus | null = null;
         level: number | null = null;
-        contour: ModelContour | null = null;
-        constructor(options: ModelObjectOptions) {
+        contour?: ModelContour = undefined;
+        constructor(position: Vector3,
+            scale: Vector2,
+            sc_type: number,
+            sc_addr?: number,
+            text?: string) {
 
-            if (options.position) {
-                this.position = options.position;
+            if (position) {
+                this.position = position;
             } else {
                 this.position = new Vector3(0.0, 0.0, 0.0);
             }
 
-            if (options.scale) {
-                this.scale = options.scale;
+            if (scale) {
+                this.scale = scale;
             } else {
                 this.scale = new Vector2(20.0, 20.0);
             }
 
-            if (options.sc_type) {
-                this.sc_type = options.sc_type;
+            if (sc_type) {
+                this.sc_type = sc_type;
             } else {
                 this.sc_type = sc_type_node;
             }
 
-            if (options.sc_addr) {
-                this.sc_addr = options.sc_addr;
+            if (sc_addr) {
+                this.sc_addr = sc_addr;
             } else {
                 this.sc_addr = null;
             }
 
-            if (options.text) {
-                this.text = options.text;
+            if (text) {
+                this.text = text;
             } else {
                 this.text = null;
             }
@@ -255,15 +259,15 @@ namespace ModelObjects {
             if (this.scene) {
                 if (isCopy) {
                     this.sc_addr = addr;
-                    this.scene.objects[this.sc_addr].copies[this.id] = this;
+                    this.scene.objects.get(this.sc_addr).copies[this.id] = this;
                 } else {
                     // remove old sc-addr from map
                     if (this.sc_addr && Object.prototype.hasOwnProperty.call(this.scene.objects, this.sc_addr)) {
-                        delete this.scene.objects[this.sc_addr];
+                        delete this.scene.objects.get(this.sc_addr)?.destroy;
                     }
                     this.sc_addr = addr;
 
-                    if (this.sc_addr) this.scene.objects[this.sc_addr] = this;
+                    if (this.sc_addr) this.scene.objects.get(this.sc_addr) = this;
                 }
 
                 this.need_observer_sync = true;
@@ -280,14 +284,16 @@ namespace ModelObjects {
      */
     export class ModelNode extends ModelObject {
 
-        constructor(options: ModelObjectOptions) {
-            super(options);
+        constructor(position: Vector3,
+            scale: Vector2,
+            sc_type: number,
+            sc_addr?: number,
+            text?: string) {
+            super(position, scale, sc_type, sc_addr, text);
         };
 
 
         getConnectionPos(from: Vector3, dotPos: number) {
-
-            ModelObject.prototype.getConnectionPos.call(this, from, dotPos);
 
             var radius = this.scale.x;
             var center = this.position;
@@ -303,8 +309,7 @@ namespace ModelObjects {
 
 
     type ModelLinkOptions = ModelObjectOptions & {
-        containerId: string
-        content: string
+
     }
     // ---------------- link ----------
     export class ModelLink extends ModelObject {
@@ -312,11 +317,21 @@ namespace ModelObjects {
         contentType: string | null = null
         containerId: string
         content: string
-        constructor(options: ModelLinkOptions) {
-            super(options);
+        constructor(position: Vector3,
+            scale: Vector2,
+            sc_type: number,
+            containerId: string,
+            content: string,
+            sc_addr?: number,
+            text?: string) {
+            super(position,
+                scale,
+                sc_type,
+                sc_addr,
+                text);
 
-            this.containerId = options.containerId;
-            this.content = options.content;
+            this.containerId = containerId;
+            this.content = content;
         };
 
         getConnectionPos(from: Vector3, dotPos: number) {
@@ -389,15 +404,26 @@ namespace ModelObjects {
         source_dot: number
         target_dot: number
 
-        constructor(options: ModelEdgeOptions) {
-            super(options)
-            this.source = options.source;
-            this.target = options.target;
+        constructor(position: Vector3,
+            scale: Vector2,
+            sc_type: number,
+            source: ModelObject,
+            target: ModelObject,
+            sc_addr?: number,
+            text?: string) {
+            super(position,
+                scale,
+                sc_type,
+                sc_addr,
+                text,
+            );
+            this.source = source;
+            this.target = target;
 
-            if (options.source)
-                this.setSource(options.source);
-            if (options.target)
-                this.setTarget(options.target);
+            if (source)
+                this.setSource(source);
+            if (target)
+                this.setTarget(target);
 
             this.source_pos = this.source.position; // the begin position of egde in world coordinates
             this.target_pos = this.target.position; // the end position of edge in world coordinates
@@ -633,7 +659,7 @@ namespace ModelObjects {
 
     //---------------- contour ----------------
     type ModelContourOptions = ModelObjectOptions & {
-        verticies: Vector3[]
+
     };
     /**
      * Initialize sc.g-arc(edge) object
@@ -644,12 +670,21 @@ namespace ModelObjects {
         childs: ModelObject[];
         points: Vector3[];
         previousPoint: Vector3 | null
-        constructor(options: ModelContourOptions) {
-            super(options);
+        constructor(position: Vector3,
+            scale: Vector2,
+            sc_type: number,
+            verticies: Vector3[],
+            sc_addr?: number,
+            text?: string) {
+            super(position,
+                scale,
+                sc_type,
+                sc_addr,
+                text);
 
             this.childs = [];
-            this.points = options.verticies ? options.verticies : [];
-            this.sc_type = options.sc_type ? options.sc_type : sc_type_node_struct | sc_type_node;
+            this.points = verticies ? verticies : [];
+            this.sc_type = sc_type ? sc_type : sc_type_node_struct | sc_type_node;
             this.previousPoint = null;
 
             var cx = 0;
@@ -707,7 +742,7 @@ namespace ModelObjects {
         removeChild(child: ModelObject) {
             const idx = this.childs.indexOf(child);
             this.childs.splice(idx, 1);
-            child.contour = null;
+            child.contour = undefined;
         };
 
         isObjectInPolygon(node: ModelObject) {
@@ -745,7 +780,7 @@ namespace ModelObjects {
             this.addEdgesWhichAreInContourPolygon(scene.edges);
         };
 
-        getConnectionPos(from: Vector3, dotPos:) {
+        getConnectionPos(from: Vector3, dotPos: number) {
             const points = Algorithms.polyclip(this.points, from, this.position);
             let nearestIntersectionPoint = new Vector3(points[0].x, points[0].y, 0);
             for (var i = 1; i < points.length; i++) {
@@ -780,8 +815,8 @@ namespace ModelObjects {
 
     type ModelBusOptions = ModelObjectOptions & {
         source: ModelObject
-        source_pos: Vector3 | null
-        target_pos: Vector3 | null
+        source_pos?: Vector3
+        target_pos?: Vector3
     };
 
     export class ModelBus extends ModelObject {
@@ -793,12 +828,23 @@ namespace ModelObjects {
         source_dot: number;
         target_dot: number;
         previousPoint: Vector3;
-        constructor(options: ModelBusOptions) {
-            super(options);
+        constructor(position: Vector3,
+            scale: Vector2,
+            sc_type: number,
+            source: ModelObject,
+            source_pos?: Vector3,
+            target_pos?: Vector3,
+            sc_addr?: number,
+            text?: string) {
+                super(position,
+                    scale,
+                    sc_type,
+                    sc_addr,
+                    text);
             this.id_bus = this.id;
-            this.source = options.source;
-            this.source_pos = this.source.position // the begin position of bus in world coordinates
-            this.target_pos = options.target_pos ?? this.source.position; // the end position of bus in world coordinates
+            this.source = source;
+            this.source_pos = source_pos ??this.source.position // the begin position of bus in world coordinates
+            this.target_pos = target_pos ?? this.source.position; // the end position of bus in world coordinates
             this.points = [];
             this.source_dot = 0.5;
             this.target_dot = 0.5;
@@ -826,9 +872,9 @@ namespace ModelObjects {
 
             // calculate begin and end positions
             if (this.points.length > 0) {
-                    this.source_pos = this.source.getConnectionPos(new Vector3(this.points[0].x, this.points[0].y, 0), this.source_dot);
+                this.source_pos = this.source.getConnectionPos(new Vector3(this.points[0].x, this.points[0].y, 0), this.source_dot);
             } else {
-                    this.source_pos = this.source.getConnectionPos(this.target_pos, this.source_dot);
+                this.source_pos = this.source.getConnectionPos(this.target_pos, this.source_dot);
             }
 
             this.position.copy(this.target_pos).add(this.source_pos).multiplyScalar(0.5);
@@ -908,4 +954,3 @@ namespace ModelObjects {
 
 
     }
-}
