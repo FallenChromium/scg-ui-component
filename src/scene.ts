@@ -2,6 +2,9 @@ import { Vector2, Vector3 } from "three";
 import { ModelBus, ModelContour, ModelEdge, ModelLink, ModelNode, ModelObject } from "./objects-model";
 import { LayoutManager } from "./layout";
 import { SCgRender } from "./render";
+import { SCgEditMode } from "./config";
+import { ScAddr, sc_type_edge_mask, sc_type_node } from "ts-sc-client";
+import { SCgDebug } from "./debug";
 
 const enum SCgModalMode {
     SCgModalNone =  0,
@@ -62,16 +65,16 @@ export class SCgScene {
     // drag line points
     drag_line_points: Array<Vector2> = [];
     // points of selected line object
-    line_points: Array<Vector2> = [];
+    line_points: Array<{ pos: Vector2, idx: number }> = [];
 
     // mouse position
     mouse_pos = new Vector3(0, 0, 0);
 
     // edge source and target
-    edge_data = { source: null, target: null };
+    edge_data: { source: ScAddr | null, target: ScAddr | null } = { source: null, target: null };
 
     // bus source
-    bus_data = { source: null, end: null };
+    bus_data: { source: Vector2 | null, end: Vector2 | null } = { source: null, end: null };
 
     // callback for selection changed
     event_selection_changed: Function | null = null;
@@ -594,7 +597,7 @@ export class SCgScene {
      */
     setLinePointPos(idx, pos) {
         if (this.selected_objects.length != 1) {
-            SCgDebug.error('Invalid state. Trying to update line point position, when there are no selected objects');
+            SCgDebug.error('Invalid state. Trying to update line point position when there are no selected objects');
             return;
         }
 
@@ -631,7 +634,8 @@ export class SCgScene {
 
     isSelectedObjectAllArcsOrAllNodes() {
         var objects = this.selected_objects;
-        var typeMask = objects[0].sc_type & sc_type_arc_mask ? sc_type_arc_mask :
+        // TODO: arc_mask -> edge_mask, check whether this works correctly
+        var typeMask = objects[0].sc_type & sc_type_edge_mask ? sc_type_edge_mask :
             objects[0].sc_type & sc_type_node ?
                 sc_type_node : 0;
         return (objects.every(function (obj) {
